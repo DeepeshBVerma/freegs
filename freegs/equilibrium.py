@@ -555,7 +555,7 @@ class Equilibrium:
                 # Get psi at the limit points
                 psi_limit_points = np.zeros(len(Rlimit))
                 for i in range(len(Rlimit)):
-                    psi_limit_points[i] = psi_2d(Rlimit[i], Zlimit[i])[0]
+                    psi_limit_points[i] = psi_2d(Rlimit[i], Zlimit[i]).item()
 
                 # Get index of maximum psi value
                 indMax = np.argmax(psi_limit_points)
