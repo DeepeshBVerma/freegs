@@ -84,6 +84,16 @@ def find_critical(R, Z, psi, discard_xpoints=True):
     xpoint = []
     opoint = []
 
+    def f_scalar(R, Z, dx=0, dy=0):
+        """
+        Call f() but assuming R and Z are scalars.
+        Return a scalar.
+
+        f() returns a one-element NumPy array.
+        Convert to scalar with .item() method.
+        """
+        return f(R, Z, dx=dx, dy=dy, grid=False).item()
+
     nx, ny = Bp2.shape
     for i in range(2, nx - 2):
         for j in range(2, ny - 2):
@@ -109,8 +119,8 @@ def find_critical(R, Z, psi, discard_xpoints=True):
 
                 count = 0
                 while True:
-                    Br = -f(R1, Z1, dy=1, grid=False) / R1
-                    Bz = f(R1, Z1, dx=1, grid=False) / R1
+                    Br = -f_scalar(R1, Z1, dy=1) / R1
+                    Bz = f_scalar(R1, Z1, dx=1) / R1
 
                     if Br**2 + Bz**2 < 1e-6:
                         # Found a minimum. Classify as either
@@ -132,20 +142,20 @@ def find_critical(R, Z, psi, discard_xpoints=True):
 
                         if D < 0.0:
                             # Found X-point
-                            xpoint.append((R1, Z1, f(R1, Z1)[0][0]))
+                            xpoint.append((R1, Z1, f_scalar(R1, Z1)))
                         else:
                             # Found O-point
-                            opoint.append((R1, Z1, f(R1, Z1)[0][0]))
+                            opoint.append((R1, Z1, f_scalar(R1, Z1)))
                         break
 
                     # Jacobian matrix
                     # J = ( dBr/dR, dBr/dZ )
                     #     ( dBz/dR, dBz/dZ )
 
-                    J[0, 0] = -Br / R1 - f(R1, Z1, dy=1, dx=1)[0][0] / R1
-                    J[0, 1] = -f(R1, Z1, dy=2)[0][0] / R1
-                    J[1, 0] = -Bz / R1 + f(R1, Z1, dx=2) / R1
-                    J[1, 1] = f(R1, Z1, dx=1, dy=1)[0][0] / R1
+                    J[0, 0] = -Br / R1 - f_scalar(R1, Z1, dy=1, dx=1) / R1
+                    J[0, 1] = -f_scalar(R1, Z1, dy=2) / R1
+                    J[1, 0] = -Bz / R1 + f_scalar(R1, Z1, dx=2) / R1
+                    J[1, 1] = f_scalar(R1, Z1, dx=1, dy=1) / R1
 
                     d = dot(inv(J), [Br, Bz])
 
