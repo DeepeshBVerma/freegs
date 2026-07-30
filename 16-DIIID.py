@@ -25,7 +25,7 @@ eq = freegs.Equilibrium(
 
 profiles = freegs.jtor.ConstrainPaxisIp(
     eq,
-    159811,  # Plasma pressure on axis [Pascals]
+    5.216687e+04, #159811,  # Plasma pressure on axis [Pascals]
     -1533632,  # Plasma current [Amps]
     -3.231962138124,
 )  # vacuum f = R*Bt
@@ -55,6 +55,8 @@ freegs.solve(
     profiles,  # The plasma profiles
     constrain,  # Plasma control constraints
     show=True,
+    rtol=1e-5,
+    maxits = 100
 )  # Shows results at each nonlinear iteration
 
 # eq now contains the solution

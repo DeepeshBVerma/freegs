@@ -96,15 +96,19 @@ Files
 The "freegs" module consists of the following files:
 
 * **boundary.py**        - Operators for applying boundary conditions to plasma psi
+* **bootstrap.py**       - Bootstrap-consistent profiles, and ohmic/bootstrap current separation
 * **control.py**         - Routines for controlling coil currents based on constraints
 * **critical.py**        - Finds critical points (O- and X-points)
 * **equilibrium.py**     - Represents the plasma equilibrium state
+* **fluxsurface.py**     - Flux surface geometry, flux surface averages and trapped fraction
 * **gradshafranov.py**   - Greens functions and operators for the Grad-Shafranov equation
 * **jtor.py**            - Routines for calculating toroidal current density (profiles)
+* **kinetic_profiles.py**- Species density and temperature profiles, with validation
 * **machine.py**         - Represents the coils and power supply circuits
 * **multigrid.py**       - The multigrid solver for the linear elliptic operator
 * **picard.py**          - Nonlinear solver, iterating the profiles and constraints
 * **plotting.py**        - Plotting routines using matplotlib
+* **sauter.py**          - Neoclassical conductivity and bootstrap coefficients (Sauter 1999)
 
 License
 -------

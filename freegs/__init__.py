@@ -31,19 +31,40 @@ along with FreeGS.  If not, see <http://www.gnu.org/licenses/>.
 
 from importlib.metadata import metadata
 
-from . import control, jtor, machine, plotting
+from . import (
+    bootstrap,
+    control,
+    fluxsurface,
+    jtor,
+    kinetic_profiles,
+    machine,
+    plotting,
+    sauter,
+)
+from .bootstrap import BootstrapAnalysis, BootstrapProfiles
 from .dump import OutputFile
 from .equilibrium import Equilibrium
+from .fluxsurface import FluxSurfaces
+from .kinetic_profiles import KineticProfiles, mtanh_profile
 from .picard import solve
 
 __version__ = metadata(__package__)["Version"]
 
 __all__ = [
+    "BootstrapAnalysis",
+    "BootstrapProfiles",
     "Equilibrium",
+    "FluxSurfaces",
+    "KineticProfiles",
     "OutputFile",
+    "bootstrap",
     "control",
+    "fluxsurface",
     "jtor",
+    "kinetic_profiles",
     "machine",
+    "mtanh_profile",
     "plotting",
+    "sauter",
     "solve",
 ]

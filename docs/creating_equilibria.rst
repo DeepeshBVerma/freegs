@@ -454,6 +454,150 @@ This is the method used in `Y.M.Jeon 2015 <https://arxiv.org/abs/1503.03135>`_, 
    
 By integrating over the plasma domain and combining the constraints on poloidal beta and plasma current, the values of :math:`L` and :math:`\beta_0` are found.
 
+.. _bootstrap_profiles:
+
+Bootstrap current from kinetic profiles
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The methods above prescribe the shape of the current profile. An alternative is
+to specify the density and temperature of each species and let the current
+profile follow from neoclassical theory, using the formulas of
+`Sauter, Angioni and Lin-Liu 1999 <https://doi.org/10.1063/1.873240>`_.
+
+The species profiles are supplied as arrays on a normalised poloidal flux grid:
+
+::
+
+   psi_n = numpy.linspace(0, 1, 201)
+
+   kinetic = freegs.KineticProfiles(
+       psi_n,
+       ne,          # Electron density [m^-3]
+       Te,          # Electron temperature [eV]
+       Ti,          # Ion temperature [eV]
+       Zeff=1.8,    # Effective charge, scalar or array
+       ion_Z=1.0, ion_A=2.0,   # Deuterium main ion
+       impurity_Z=6.0)         # Carbon carries Z_eff
+
+   profiles = freegs.BootstrapProfiles(
+       eq,
+       kinetic,
+       Ip=1e6,      # Total plasma current [Amps]
+       fvac=1.0)    # Vacuum f = R*Bt
+
+Densities and temperatures are stored as cubic splines of their logarithm, so
+they cannot go negative and their logarithmic gradients, which is what the
+bootstrap formulas need, are the spline derivatives directly. Main ion and
+impurity densities follow from quasineutrality together with the definition of
+:math:`Z_{\mathrm{eff}}`.
+
+The total pressure :math:`p = p_e + p_i` is then fixed outright, so
+:math:`p'\left(\psi\right)` is known and is never fitted. What remains is
+:math:`ff'`, which is obtained from the flux surface averaged parallel current.
+Using :math:`\mu_0 \mathbf{J}_{pol} = f' \mathbf{B}_{pol}` together with the
+Grad-Shafranov equation gives the pointwise identity
+
+.. math::
+
+   \mathbf{J}\cdot\mathbf{B} = f p' + \frac{f'}{\mu_0} B^2
+
+so that, after flux surface averaging,
+
+.. math::
+
+   ff' = \frac{\mu_0 f \left(\left<j_\parallel B\right> - f p'\right)}{\left<B^2\right>}
+
+The parallel current is the sum of an inductive and a bootstrap term,
+
+.. math::
+
+   \left<j_\parallel B\right> = \sigma_{neo}\left<E_\parallel B\right>
+   - I\left(\psi\right) p_e \left[ L_{31} \frac{p}{p_e} \frac{\partial \ln p}{\partial \psi}
+   + L_{32} \frac{\partial \ln T_e}{\partial \psi}
+   + L_{34} \alpha \frac{1-R_{pe}}{R_{pe}} \frac{\partial \ln T_i}{\partial \psi} \right]
+
+where :math:`\sigma_{neo}`, :math:`L_{31}`, :math:`L_{32}`, :math:`L_{34}` and
+:math:`\alpha` are the fitted functions of trapped fraction, collisionality and
+:math:`Z_{\mathrm{eff}}` given in ``freegs.sauter``. The trapped fraction and
+the flux surface averages are computed from traced flux surfaces
+(``freegs.fluxsurface``) and are updated at every nonlinear iteration, so the
+equilibrium and the bootstrap current are solved together.
+
+The inductive field is written as
+:math:`\left<E_\parallel B\right> = V_{loop} f \left<1/R^2\right> / 2\pi`.
+Since the whole chain from :math:`V_{loop}` to :math:`I_p` is linear, the loop
+voltage needed to meet the requested :math:`I_p` is found in closed form at
+each iteration rather than by iterating.
+
+Separating the ohmic and bootstrap contributions
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Because :math:`ff'` is linear in :math:`\left<j_\parallel B\right>`, the
+toroidal current density splits into three exactly additive pieces, which are
+available after the solve:
+
+::
+
+   analysis = profiles.analysis()
+   analysis.report()
+
+   analysis.I_ohm, analysis.I_bs, analysis.I_dia   # [Amps], summing to Ip
+   analysis.f_bootstrap                            # I_bs / Ip
+   analysis.Vloop                                  # [Volts]
+   analysis.dIdpsin["bs"]                          # radial profile of dI/dpsi_n
+   analysis.Jtor_bs                                # 2D (R,Z) current density
+
+The third piece is the diamagnetic, or Pfirsch-Schlüter, current associated
+with :math:`R p'`; it is usually small. ``report()`` also prints two
+consistency checks: :math:`\left<j_\parallel B\right>` reconstructed from the
+converged :math:`p'` and :math:`ff'`, and the component currents recomputed by
+integrating :math:`dI/d\psi_N` over flux surfaces instead of over the
+:math:`\left(R,Z\right)` grid.
+
+An existing equilibrium, for instance one read from a G-EQDSK file, can be
+decomposed the same way without re-solving it:
+
+::
+
+   from freegs.bootstrap import analyse_equilibrium
+
+   analysis = analyse_equilibrium(eq, kinetic)
+
+Here the total parallel current is taken from the equilibrium's own
+:math:`p'` and :math:`ff'`, the bootstrap part is computed from the supplied
+profiles, and whatever is left over is attributed to the ohmic term. This is
+the appropriate comparison against another code, since the geometry and total
+current remain theirs. Note that any auxiliary current drive present in the
+equilibrium will be lumped in with the ohmic current, and that
+``analysis.pressure_mismatch`` should be checked: the bootstrap estimate is
+only as good as the agreement between the supplied profiles and the
+equilibrium's pressure.
+
+Behaviour near the plasma edge
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+The collisionalities contain :math:`qR/\epsilon^{3/2}`, and :math:`q` diverges
+at the X-point. Left alone this sends the effective trapped fraction to zero
+and produces a spurious collapse of the bootstrap current exactly where the
+pedestal gradient is largest. The geometric and collisionality inputs are
+therefore frozen at their values on the last reliably traced surface,
+``psi_max`` (0.995 by default), while the local kinetic gradients continue to
+be evaluated from the profiles. ``report()`` prints the frozen values and the
+fraction of :math:`I_{bs}` carried by that region, so the effect of the cutoff
+can be seen.
+
+``KineticProfiles`` separately checks that the supplied profiles are usable,
+with particular attention to :math:`\psi_N \rightarrow 1`. It reports profiles
+that stop short of the boundary and are therefore extrapolated, edge densities
+or temperatures below a floor, spline ringing, unbounded logarithmic gradients,
+and pedestals too coarsely sampled to resolve. Use ``kinetic.report()`` to list
+the findings and ``kinetic.plot()`` to inspect the edge by eye. For noisy
+experimental data, pass ``smooth`` to damp the ringing an interpolating spline
+would otherwise produce.
+
+See ``17-DIIID-bootstrap.py`` for a complete example, and
+``18-bootstrap-validate.py`` for comparing against external data.
+
 Feedback and shape control
 --------------------------
 

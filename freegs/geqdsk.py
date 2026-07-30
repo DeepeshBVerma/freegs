@@ -242,10 +242,19 @@ def read(
     # Read the data as a Dictionary
     data = geqdsk.read(fh, cocos=cocos)
 
-    # If data contains a limiter, set the machine wall
-    if "rlim" in data:
-        if len(data["rlim"]) > 3:
-            machine.wall = Wall(data["rlim"], data["zlim"])
+    # If data contains a limiter, set the machine wall.
+    #
+    # Fetch by key rather than testing membership: freeqdsk >= 0.5 returns a
+    # GEQDSKFile dataclass whose __getitem__ takes attribute names, so `in`
+    # falls back to the iteration protocol and raises.
+    try:
+        rlim, zlim = data["rlim"], data["zlim"]
+    except (KeyError, AttributeError, TypeError):
+        rlim = zlim = None
+
+    if rlim is not None:
+        if len(rlim) > 3:
+            machine.wall = Wall(rlim, zlim)
         else:
             print("Fewer than 3 points given for limiter/wall. Ignoring.")
 
